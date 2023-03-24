@@ -1,40 +1,37 @@
-FROM nvidia/cuda:11.2.2-cudnn8-devel-ubuntu20.04
+# Use the official Python image as the base image
+FROM python:3.9-slim-buster
 
-# Install necessary packages
+# Install CUDA and cuDNN
 RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        build-essential \
-        ca-certificates \
-        curl \
-        git \
-        libgl1-mesa-glx \
-        libglib2.0-0 \
-        libsm6 \
-        libxext6 \
-        libxrender-dev \
-        python3 \
-        python3-pip \
-        python3-setuptools \
-        python3-dev \
-        software-properties-common && \
-    apt-get clean && \
+    apt-get install -y --no-install-recommends gnupg && \
+    echo "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64 /" >> /etc/apt/sources.list.d/cuda.list && \
+    echo "deb http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64 /" >> /etc/apt/sources.list.d/cuda.list && \
+    apt-key adv --fetch-keys "http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub" && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        cuda-cudart-11-0 \
+        libcudnn8=8.0.4.30-1+cuda11.0 \
+        libcudnn8-dev=8.0.4.30-1+cuda11.0 && \
     rm -rf /var/lib/apt/lists/*
 
-# Install PyTorch
-RUN pip3 install torch torchvision
+# Set the working directory to /app
+WORKDIR /app
 
-# Install other Python packages
-RUN pip3 install chess pytorch-lightning
+# Copy the Python requirements file into the container
+COPY requirements.txt .
 
-# Download the Lichess games archive
-RUN curl -L -O https://database.lichess.org/standard/lichess_db_standard_rated_2022-02.pgn.bz2 && \
-    bunzip2 lichess_db_standard_rated_2022-02.pgn.bz2
+# Install the Python requirements
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Define a PyTorch dataset for the chess games
-COPY chess_dataset.py /
+# Copy the rest of the application files into the container
+COPY . .
 
-# Define a PyTorch model for chess
-COPY chess_model.py /
+# Set the environment variables for CUDA and cuDNN
+ENV LD_LIBRARY_PATH /usr/local/cuda/lib64:$LD_LIBRARY_PATH
+ENV CUDA_HOME /usr/local/cuda
 
-# Train the chess model with PyTorch Lightning
-CMD ["python3", "-m", "lightning_fit"]
+# Expose port 8000 for the Flask app
+EXPOSE 8000
+
+# Start the Flask app
+CMD ["python", "app.py"]
