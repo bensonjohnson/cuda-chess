@@ -1,5 +1,5 @@
 # Use the official PyTorch image as the base image
-FROM pytorch/pytorch:1.10-cuda11.1-cudnn8-runtime
+FROM pytorch/pytorch:2.0.0-cuda11.7-cudnn8-runtime
 
 # Set the working directory
 WORKDIR /app
